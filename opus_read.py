@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# (C) Fabrice Pardo, MiNaO, LPN, CNRS: version 0.0.1
+# (C) Fabrice Pardo, MiNaO, LPN, CNRS: version 0.0.2
 
 import struct
 import numpy as np
@@ -128,6 +128,23 @@ OPUS_TYPES_SPECIFIC = {
     'RDX,0':'OFF',
 }
 
+OPUS_BLOCS = {
+    (0, 0, 0, 0):   'garbage blocs',
+    (7, 4, 0, 0):   'PhSm',
+    (23, 4, 0, 0):  'Data Parameters PhSm',
+    (7, 8, 0, 0):   'IgSm',
+    (23, 8, 0, 0):  'Data Parameters IgSm',
+    (7, 12, 0, 0):  'ScSm',
+    (23, 12, 0, 0): 'Data Parameters ScSm',
+    (32, 0, 0, 0):  'Instrument Parameters',
+    (40, 0, 0, 0):  'Instrument Parameters Rf',
+    (48, 0, 0, 0):  'Acquisition Parameters',
+    (64, 0, 0, 0):  'FT - Parameters',
+    (96, 0, 0, 0):  'Optics Parameters',
+    (104, 0, 0, 0): 'Optics Parameters Rf',
+    (160, 0, 0, 0): 'Sample Parameters',
+}
+
 def unpack(s,d):
     a = struct.unpack(s,d)
     assert(len(a) == 1)
@@ -149,6 +166,7 @@ def get_params(b):
     imax = len(b)
     dtypes = {}
     dvalues = {}
+    key_order = []
     while(inext < imax):
         bname = unpack('4s', b[inext:inext+4]).rstrip('\x00')
         btype = unpack('<H', b[inext+4:inext+6])
@@ -193,10 +211,11 @@ def get_params(b):
         assert (not dtypes.has_key(bname))
         dtypes[bname] = btype
         dvalues[bname] = bknown
+        key_order.append(bname)
         # print(humankey + ' | ' + str(bknown))
         inext = ilast
     reste = b[inext:]
-    return (dvalues,dtypes,reste)
+    return (dvalues,dtypes,key_order,reste)
 
 
 def opus_read(filename):
@@ -204,7 +223,7 @@ def opus_read(filename):
     Return blocs from an opus file.
 
     calling:
-        blocs, dict_params, dict_data = opus_read(filename)
+        blocs, dict_params, dict_data, dict_unclassified = opus_read(filename)
 
     parameters:
         filename - an OPUS binary filename
@@ -213,9 +232,10 @@ def opus_read(filename):
         blocs - list of opus blocs
         dict_params - dictionary of parameter bloc indexes
         dict_data - dictionary of data bloc indexes
+        dict_unclassified - dictionary of unclassified (yet) bloc indexes
 
     blocs[0]: (h0, h1, bloc_indexes list)
-    parameter bloc: (key-value dictionary, key-type dictionary, extra bloc bytes)
+    parameter bloc: (key-value dictionary, key-type dictionary, key_order, extra bloc bytes)
     data bloc: numpy float-32 array
         
     h0: 12 bytes tuple
@@ -258,6 +278,7 @@ def opus_read(filename):
     blocs = []
     dict_params = {}
     dict_data = {}
+    dict_unclassified = {}
 
     blocs.append((h_unknown0, h_unknown1, h_pointers))
     
@@ -265,10 +286,10 @@ def opus_read(filename):
         b = rblocs[ib]
         # print('')
         # print('bloc ' + str(ib) + ':')
-        # print(btypes[ib])
+        # print(btypes[ib], ib, len(rblocs[ib]))
         if b[-8:-5] == 'END':
-            dvalues,dtypes,reste = get_params(rblocs[ib])
-            blocs.append((dvalues,dtypes,reste))
+            dvalues,dtypes,key_order,reste = get_params(rblocs[ib])
+            blocs.append((dvalues,dtypes,reste,key_order))
             if btypes[ib] != (0,0,0,0):            
                 assert(not dict_params.has_key(btypes[ib]))
                 dict_params[btypes[ib]] = ib
@@ -280,5 +301,10 @@ def opus_read(filename):
             blocs.append(get_float_array(rblocs[ib]))
             assert(not dict_data.has_key(btypes[ib]))
             dict_data[btypes[ib]] = ib
+        else:
+            blocs.append(rblocs[ib])
+            dict_unclassified[btypes[ib]] = ib
+    return(blocs, dict_params, dict_data, dict_unclassified)
 
-    return(blocs, dict_params, dict_data)
+blocs, params_dict, data_dict, unclassified_dict = opus_read('/home/fab/Z/Fabrice/2015-10-21_murs/15h14_GaAs_40_deg_38_deg_optim_detect_0.5mm_v7_air.0')
+
