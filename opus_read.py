@@ -39,7 +39,7 @@ OPUS_NAMES = {
     'FOC':'Focal Length',
     'FXV':'Frequency of First Point',
     'GBW':'Number of Good BW Scans',
-    'GFW':'Number of Good FW Scans ',
+    'GFW':'Number of Good FW Scans',
     'HFL':'High Folding Limit',
     'HFQ':'End Frequency Limit for File',
     'HFW':'Wanted High Frequency Limit',
@@ -70,7 +70,7 @@ OPUS_NAMES = {
     'PHR':'Phase Resolution',
     'PHZ':'Phase Correction Mode',
     'PKA':'Peak Amplitude',
-    'PKL':'Peak Location ',    
+    'PKL':'Peak Location',    
     'PLF':'Result Spectrum',
     'PRA':'Backward Peak Amplitude',
     'PRL':'Backward Peak Location',
@@ -129,20 +129,21 @@ OPUS_TYPES_SPECIFIC = {
 }
 
 OPUS_BLOCS = {
-    (0, 0, 0, 0):   'garbage blocs',
-    (7, 4, 0, 0):   'PhSm',
-    (23, 4, 0, 0):  'Data Parameters PhSm',
-    (7, 8, 0, 0):   'IgSm',
-    (23, 8, 0, 0):  'Data Parameters IgSm',
-    (7, 12, 0, 0):  'ScSm',
-    (23, 12, 0, 0): 'Data Parameters ScSm',
-    (32, 0, 0, 0):  'Instrument Parameters',
-    (40, 0, 0, 0):  'Instrument Parameters Rf',
-    (48, 0, 0, 0):  'Acquisition Parameters',
-    (64, 0, 0, 0):  'FT - Parameters',
-    (96, 0, 0, 0):  'Optics Parameters',
-    (104, 0, 0, 0): 'Optics Parameters Rf',
-    (160, 0, 0, 0): 'Sample Parameters',
+    (0, 0, 0, 0):    'garbage blocs',
+    (0, 0, 104, 64): 'Datafile History',
+    (7, 4, 0, 0):    'ScSm',
+    (23, 4, 0, 0):   'Data Parameters ScSm',
+    (7, 8, 0, 0):    'IgSm',
+    (23, 8, 0, 0):   'Data Parameters IgSm',
+    (7, 12, 0, 0):   'PhSm',
+    (23, 12, 0, 0):  'Data Parameters PhSm',
+    (32, 0, 0, 0):   'Instrument Parameters',
+    (40, 0, 0, 0):   'Instrument Parameters Rf',
+    (48, 0, 0, 0):   'Acquisition Parameters',
+    (64, 0, 0, 0):   'FT - Parameters',
+    (96, 0, 0, 0):   'Optics Parameters',
+    (104, 0, 0, 0):  'Optics Parameters Rf',
+    (160, 0, 0, 0):  'Sample Parameters',
 }
 
 def unpack(s,d):
@@ -276,9 +277,9 @@ def opus_read(filename):
     assert (rblocs[0][lasti:] == '\x00' * (len(rblocs[0]) - lasti))
 
     blocs = []
-    dict_params = {}
-    dict_data = {}
-    dict_unclassified = {}
+    params_dict = {}
+    data_dict = {}
+    unclassified_dict = {}
 
     blocs.append((h_unknown0, h_unknown1, h_pointers))
     
@@ -288,23 +289,72 @@ def opus_read(filename):
         # print('bloc ' + str(ib) + ':')
         # print(btypes[ib], ib, len(rblocs[ib]))
         if b[-8:-5] == 'END':
+            # print('params')
             dvalues,dtypes,key_order,reste = get_params(rblocs[ib])
-            blocs.append((dvalues,dtypes,reste,key_order))
+            blocs.append((dvalues,dtypes,key_order,reste))
             if btypes[ib] != (0,0,0,0):            
-                assert(not dict_params.has_key(btypes[ib]))
-                dict_params[btypes[ib]] = ib
-            elif dict_params.has_key(btypes[ib]):
-                dict_params[btypes[ib]].append(ib)
+                assert(not params_dict.has_key(btypes[ib]))
+                params_dict[btypes[ib]] = ib
+            elif params_dict.has_key(btypes[ib]):
+                params_dict[btypes[ib]].append(ib)
             else:
-                dict_params[btypes[ib]] = [ib] 
+                params_dict[btypes[ib]] = [ib] 
         elif btypes[ib][0] == 7:
+            # print('data')
             blocs.append(get_float_array(rblocs[ib]))
-            assert(not dict_data.has_key(btypes[ib]))
-            dict_data[btypes[ib]] = ib
+            assert(not data_dict.has_key(btypes[ib]))
+            data_dict[btypes[ib]] = ib
         else:
+            # print('unclassified')
             blocs.append(rblocs[ib])
-            dict_unclassified[btypes[ib]] = ib
-    return(blocs, dict_params, dict_data, dict_unclassified)
+            unclassified_dict[btypes[ib]] = ib
+    return(blocs, params_dict, data_dict, unclassified_dict)
 
-blocs, params_dict, data_dict, unclassified_dict = opus_read('/home/fab/Z/Fabrice/2015-10-21_murs/15h14_GaAs_40_deg_38_deg_optim_detect_0.5mm_v7_air.0')
+OPUS_NAMES_WIDTH = max(map(len, OPUS_NAMES.values()))
 
+def opus_print(blocs, params_dict, data_dict, unclassified_dict):
+    for ik in [
+            (23, 4, 0, 0),
+            (7, 4, 0, 0),
+            (7, 12, 0, 0),
+            (23, 12, 0, 0),
+            (23, 8, 0, 0),
+            (7, 8, 0, 0),
+            (48, 0, 0, 0),
+            (96, 0, 0, 0),
+            (40, 0, 0, 0),
+            (104, 0, 0, 0),
+            (64, 0, 0, 0),
+            (160, 0, 0, 0),
+            (32, 0, 0, 0),
+            (0, 0, 104, 64),]:
+        print('')
+        print('*' * len(OPUS_BLOCS[ik]))
+        print(OPUS_BLOCS[ik])
+        print('*' * len(OPUS_BLOCS[ik]))
+        if params_dict.has_key(ik):
+            b = blocs[params_dict[ik]]
+            for k in b[2]:
+                print(format(OPUS_NAMES[k], str(OPUS_NAMES_WIDTH) + 's') + ' | ' +  str(b[0][k]))
+        elif data_dict.has_key(ik):
+            ib = data_dict[ik]
+            print('len(blocs[' + str(ib) + ']) = ' + str(len(blocs[ib])))
+        else:
+            b = blocs[unclassified_dict[ik]].split('\x00')
+            for line in b:
+                if len(line) != 0:
+                    print(line)
+    ik = (0,0,0,0)
+    for ib in params_dict[ik]:
+        print('')
+        title = OPUS_BLOCS[ik] + ': ' + str(ib)
+        print('*' * len(title))
+        print(title)
+        print('*' * len(title))
+        b = blocs[ib]
+        for k in b[2]:
+            print(format(OPUS_NAMES[k], str(OPUS_NAMES_WIDTH) + 's') + ' | ' +  str(b[0][k]))
+
+filename = '/home/fab/Z/Fabrice/2015-10-21_murs/15h14_GaAs_40_deg_38_deg_optim_detect_0.5mm_v7_air.0'
+blocs, params_dict, data_dict, unclassified_dict = opus_read(filename)
+opus_print(blocs, params_dict, data_dict, unclassified_dict)
