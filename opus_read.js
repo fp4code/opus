@@ -1,10 +1,9 @@
-# -*- coding: utf-8 -*-
-# (C) Fabrice Pardo, MiNaO, LPN, CNRS: version 0.0.2
+// (C) Fabrice Pardo, MiNaO, LPN, CNRS: version 0.0.2
 
-import struct
-import numpy as np
+'use strict';
 
-OPUS_NAMES = {
+
+var OPUS_NAMES = {
     'ABP':'Absolute Peak Pos in Laser*2',
     'ACC':'Accessory',
     'AG2':'Actual Signal Gain 2nd Channel',
@@ -100,10 +99,10 @@ OPUS_NAMES = {
     'VEL':'Scanner Velocity',    
     'VSN':'Firmware version',
     'XPP':'Experiment Path',
-    'ZFF':'Zero Filling Factor',    
-}
+    'ZFF':'Zero Filling Factor',
+};
 
-OPUS_TYPES = {
+var OPUS_TYPES = {
     'B3':'Blackman-Harris 3-Term',
     'DD':'Double Sided,Forward-Backward',
     'ML':'Mertz',
@@ -121,30 +120,80 @@ OPUS_TYPES = {
     '1.6':'1.60',
     '2.5':'2.50',
     '5.0':'5.00',
-}
+};
 
-OPUS_TYPES_SPECIFIC = {
+var OPUS_TYPES_SPECIFIC = {
     'HPF,0':'Open',
     'RDX,0':'OFF',
-}
+};
 
-OPUS_BLOCS = {
-    (0, 0, 0, 0):    'garbage blocs',
-    (0, 0, 104, 64): 'Datafile History',
-    (7, 4, 0, 0):    'ScSm',
-    (23, 4, 0, 0):   'Data Parameters ScSm',
-    (7, 8, 0, 0):    'IgSm',
-    (23, 8, 0, 0):   'Data Parameters IgSm',
-    (7, 12, 0, 0):   'PhSm',
-    (23, 12, 0, 0):  'Data Parameters PhSm',
-    (32, 0, 0, 0):   'Instrument Parameters',
-    (40, 0, 0, 0):   'Instrument Parameters Rf',
-    (48, 0, 0, 0):   'Acquisition Parameters',
-    (64, 0, 0, 0):   'FT - Parameters',
-    (96, 0, 0, 0):   'Optics Parameters',
-    (104, 0, 0, 0):  'Optics Parameters Rf',
-    (160, 0, 0, 0):  'Sample Parameters',
-}
+var OPUS_BLOCS = {
+    '0,0,0,0':    'garbage blocs',
+    '0,0,104,64': 'Datafile History',
+    '7,4,0,0':    'ScSm',
+    '23,4,0,0':   'Data Parameters ScSm',
+    '7,8,0,0':    'IgSm',
+    '23,8,0,0':   'Data Parameters IgSm',
+    '7,12,0,0':   'PhSm',
+    '23,12,0,0':  'Data Parameters PhSm',
+    '32,0,0,0':   'Instrument Parameters',
+    '40,0,0,0':   'Instrument Parameters Rf',
+    '48,0,0,0':   'Acquisition Parameters',
+    '64,0,0,0':   'FT - Parameters',
+    '96,0,0,0':   'Optics Parameters',
+    '104,0,0,0':  'Optics Parameters Rf',
+    '160,0,0,0':  'Sample Parameters',
+};
+
+//var FileReader = require('filereader'), fileReader = new FileReader();
+//fileReader.readAsBinaryString('/home/fab/Z/Fabrice/2015-10-21_murs/09h04_murs_desox_40_deg_38_deg.0')
+
+var fs = require('fs');
+var bindata;
+fs.readFile('/home/fab/Z/Fabrice/2015-10-21_murs/09h04_murs_desox_40_deg_38_deg.0',
+		       'binary',
+		       function (err,data) {
+    if (err) {
+	return console.log(err);
+    } else {
+	bindata = data;
+    }
+});
+
+var Parser = require('binary-parser').Parser;
+
+var ipHeader = new Parser()
+    .endianess('big')
+    .bit4('version')
+    .bit4('headerLength')
+    .uint8('tos')
+    .uint16('packetLength')
+    .uint16('id')
+    .bit3('offset')
+    .bit13('fragOffset')
+    .uint8('ttl')
+    .uint8('protocol')
+    .uint16('checksum')
+    .array('src', {
+        type: 'uint8',
+        length: 4
+    })
+    .array('dst', {
+        type: 'uint8',
+        length: 4
+    });
+ 
+// Prepare buffer to parse. 
+var buf = new Buffer('450002c5939900002c06ef98adc24f6c850186d1', 'hex');
+
+console.log(buf);
+
+
+
+
+/*
+
+
 
 def unpack(s,d):
     a = struct.unpack(s,d)
@@ -378,3 +427,6 @@ for filename in glob.glob('/home/fab/Z/Fabrice/2015-10-21_murs/*.0'):
         print("ERROR")
 
 blocs, params_dict, data_dict, unclassified_dict, reste = opus_read('/home/fab/Z/Fabrice/2015-10-21_murs/09h04_murs_desox_40_deg_38_deg.0')
+
+
+*/

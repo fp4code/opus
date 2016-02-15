@@ -2,7 +2,7 @@
 # (C) Fabrice Pardo, MiNaO, LPN, CNRS: version 0.0.2
 
 import struct
-import numpy as np
+# import numpy as np
 
 OPUS_NAMES = {
     'ABP':'Absolute Peak Pos in Laser*2',
@@ -160,7 +160,7 @@ def get_ibloc(bindata, i):
 def get_float_array(b):
     assert(len(b)%4 == 0)
     # print(len(b)//4)
-    return(np.array(struct.unpack('<'+str(len(b)//4) + 'f', b),'f'))
+    return(struct.unpack('<'+str(len(b)//4) + 'f', b),'f')
 
 def get_params(b):
     inext = 0
@@ -248,8 +248,9 @@ def opus_read(filename):
 fil    index: bloc position in Opus file
     """
     
-    with open(filename, 'rb') as file:
-        bindata = file.read()
+    file = open(filename, 'rb')
+    bindata = file.read()
+    file.close()
     h_unknown0 = get_ibloci(bindata, 0)
     h_unknown1 = get_ibloci(bindata, 1)
     h_pointers = []
